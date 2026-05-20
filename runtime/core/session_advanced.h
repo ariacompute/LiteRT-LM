@@ -84,7 +84,8 @@ class SessionAdvanced : public SessionInterface {
   static absl::StatusOr<std::unique_ptr<SessionAdvanced>> Create(
       std::weak_ptr<ExecutionManager> execution_manager,
       Tokenizer* absl_nonnull tokenizer, const SessionConfig& session_config,
-      std::optional<BenchmarkInfo> benchmark_info);
+      std::optional<BenchmarkInfo> benchmark_info,
+      std::atomic<int>* living_sessions_count = nullptr);
 
   // Destroys the SessionAdvanced object. It will wait for all tasks to be
   // done and release the session from the execution manager.
@@ -216,13 +217,19 @@ class SessionAdvanced : public SessionInterface {
                            Tokenizer* absl_nonnull tokenizer,
                            std::shared_ptr<const SessionInfo> session_info,
                            SessionState session_state = SessionState::kFresh,
-                           absl::flat_hash_set<TaskId> last_task_ids = {})
+                           absl::flat_hash_set<TaskId> last_task_ids = {},
+                           std::atomic<int>* living_sessions_count = nullptr)
       : session_id_(session_id),
         execution_manager_(execution_manager),
         tokenizer_(tokenizer),
         session_info_(session_info),
         session_state_(session_state),
-        last_task_ids_(last_task_ids) {}
+        last_task_ids_(last_task_ids),
+        living_sessions_count_(living_sessions_count) {
+    if (living_sessions_count_) {
+      (*living_sessions_count_)++;
+    }
+  }
 
   // The implementation of CloneAsync which assumes mutex_ is locked.
   absl::StatusOr<std::unique_ptr<SessionInterface>> CloneAsyncLocked(
@@ -258,6 +265,9 @@ class SessionAdvanced : public SessionInterface {
 
   // Mutex for protecting the session state and last task IDs.
   absl::Mutex mutex_;
+
+  // Pointer to the counter of living sessions in Engine.
+  std::atomic<int>* living_sessions_count_;
 };
 
 }  // namespace litert::lm

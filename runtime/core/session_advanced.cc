@@ -54,7 +54,8 @@ using TaskController = SessionInterface::TaskController;
 absl::StatusOr<std::unique_ptr<SessionAdvanced>> SessionAdvanced::Create(
     std::weak_ptr<ExecutionManager> execution_manager,
     Tokenizer* absl_nonnull tokenizer, const SessionConfig& session_config,
-    std::optional<BenchmarkInfo> benchmark_info) {
+    std::optional<BenchmarkInfo> benchmark_info,
+    std::atomic<int>* living_sessions_count) {
   auto execution_manager_lock = execution_manager.lock();
   if (execution_manager_lock == nullptr) {
     return absl::FailedPreconditionError("Execution manager is not available.");
@@ -66,7 +67,7 @@ absl::StatusOr<std::unique_ptr<SessionAdvanced>> SessionAdvanced::Create(
   return absl::WrapUnique(new SessionAdvanced(
       session_id, execution_manager, tokenizer, session_info_,
       /*session_state=*/SessionState::kFresh,
-      /*last_task_ids=*/{}));
+      /*last_task_ids=*/{}, living_sessions_count));
 }
 
 absl::Status SessionAdvanced::RunPrefill(
@@ -445,6 +446,9 @@ SessionAdvanced::~SessionAdvanced() {
   auto status = execution_manager_lock->ReleaseSession(session_id_);
   if (!status.ok()) {
     ABSL_LOG(ERROR) << "Error occurred when releasing session: " << status;
+  }
+  if (living_sessions_count_) {
+    (*living_sessions_count_)--;
   }
 };
 
