@@ -113,8 +113,21 @@ py_test(
         ":common",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
+        requirement("click"),
     ],
     imports = [".."],
+)
+
+py_test(
+    name = "model_test",
+    srcs = ["model_test.py"],
+    tags = ["nowindows"],
+    deps = [
+        ":model",
+        "//python/litert_lm",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_test(
