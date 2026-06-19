@@ -289,6 +289,18 @@ public class Conversation {
     return String(cString: cString)
   }
 
+  /// Renders the preface into a string for testing and logging.
+  ///
+  /// - Returns: The rendered preface string.
+  /// - Throws: A `LiteRTLMError` if the conversation is not alive, or rendering fails.
+  public func renderPrefaceIntoString() throws -> String {
+    let handle = try checkIsAlive()
+    guard let cString = litert_lm_conversation_render_preface_to_string(handle) else {
+      throw LiteRTLMError.conversation(.invalidResponse("Failed to render preface into string."))
+    }
+    return String(cString: cString)
+  }
+
   /// Gets the number of tokens in the conversation KV Cache (prefill + decode).
   ///
   /// - Throws: A `LiteRTLMError` if the conversation is not alive.

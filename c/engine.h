@@ -880,6 +880,16 @@ LITERT_LM_C_API_EXPORT
 const char* litert_lm_conversation_render_message_to_string(
     LiteRtLmConversation* conversation, const char* message_json);
 
+// Renders the preface into a string according to the template.
+//
+// @param conversation The conversation instance.
+// @return A pointer to the rendered string, or NULL on failure. The returned
+//   string is owned by the `conversation` object and is valid until the next
+//   call to this function or until the conversation is deleted.
+LITERT_LM_C_API_EXPORT
+const char* litert_lm_conversation_render_preface_to_string(
+    LiteRtLmConversation* conversation);
+
 // Cancels the ongoing inference process, for asynchronous inference.
 //
 // @param conversation The conversation to cancel the inference for.

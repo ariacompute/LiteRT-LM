@@ -1372,6 +1372,79 @@ TEST_P(ConversationTest, RenderMessageIntoString) {
   EXPECT_EQ(rendered, "<start_of_turn>user\nHello world!<end_of_turn>\n");
 }
 
+TEST_P(ConversationTest, RenderPrefaceIntoString) {
+  // Set up mock Session.
+  auto mock_session = CreateMockSession();
+  auto mock_engine = CreateMockEngine(std::move(mock_session));
+
+  // Create Conversation with Preface and Tools.
+  JsonPreface preface;
+  preface.messages = {
+      {{"role", "system"}, {"content", "You are a helpful assistant."}}};
+  preface.tools = nlohmann::ordered_json::parse(R"json(
+    [
+      {
+        "name": "test_tool",
+        "description": "This is a test tool.",
+        "parameters": {
+          "properties": {
+            "test_param_1": {
+              "type": "string",
+              "description": "First parameter."
+            }
+          }
+        }
+      }
+    ]
+  )json");
+
+  // We need a template that renders tools.
+  constexpr absl::string_view kTestJinjaPromptTemplateWithTools = R"jinja(
+{%- for message in messages -%}
+  {{- '<start_of_turn>' + message.role + '\n' -}}
+  {%- if message.content is string -%}
+    {{- message.content -}}
+  {%- else -%}
+    {{- message.content[0].text -}}
+  {%- endif -%}
+  {%- if message.role == 'system' and tools -%}
+{{ '\n' -}}
+{% for tool in tools -%}
+{{ tool }}
+{%- endfor -%}
+{% endif -%}
+  {{ '<end_of_turn>\n' }}
+{%- endfor -%}
+)jinja";
+
+  ASSERT_OK_AND_ASSIGN(auto conversation_config,
+                       ConversationConfig::Builder()
+                           .SetSessionConfig(session_config_)
+                           .SetOverwritePromptTemplate(PromptTemplate(
+                               kTestJinjaPromptTemplateWithTools))
+                           .SetPreface(preface)
+                           .Build(*mock_engine));
+  ASSERT_OK_AND_ASSIGN(auto conversation,
+                       Conversation::Create(*mock_engine, conversation_config));
+
+  ASSERT_OK_AND_ASSIGN(std::string rendered,
+                       conversation->RenderPrefaceIntoString({}));
+
+  std::string expected_tools = R"(def test_tool(
+    test_param_1: str | None = None,
+) -> dict:
+  """This is a test tool.
+
+  Args:
+    test_param_1: First parameter.
+  """
+)";
+
+  EXPECT_EQ(rendered, absl::StrCat("<start_of_turn>system\n"
+                                   "You are a helpful assistant.\n",
+                                   expected_tools, "<end_of_turn>\n"));
+}
+
 TEST_P(ConversationTest, SendSingleMessageWithChannelQwenThink) {
   // Set up mock Session.
   auto mock_session = CreateMockSession();

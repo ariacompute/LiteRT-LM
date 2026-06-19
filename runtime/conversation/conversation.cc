@@ -782,6 +782,29 @@ absl::StatusOr<std::string> Conversation::RenderMessageIntoString(
   return GetSingleTurnText(message, optional_args);
 }
 
+absl::StatusOr<std::string> Conversation::RenderPrefaceIntoString(
+    OptionalArgs optional_args) {
+  PromptTemplateInput tmpl_input;
+  RETURN_IF_ERROR(FillPrefaceForPromptTemplateInput(
+      preface_, model_data_processor_.get(), tmpl_input));
+
+  if (optional_args.enable_thinking.has_value()) {
+    tmpl_input.extra_context["enable_thinking"] =
+        *optional_args.enable_thinking;
+  } else if (config_.enable_thinking()) {
+    tmpl_input.extra_context["enable_thinking"] = true;
+  }
+
+  if (optional_args.extra_context.has_value()) {
+    for (const auto& [key, value] : optional_args.extra_context->items()) {
+      tmpl_input.extra_context[key] = value;
+    }
+  }
+
+  tmpl_input.add_generation_prompt = false;
+  return ApplyTemplate(tmpl_input);
+}
+
 absl::StatusOr<std::string> Conversation::GetPrefillTextForMessages(
     absl::Span<const Message> old_messages,
     absl::Span<const Message> new_messages, const OptionalArgs& optional_args,

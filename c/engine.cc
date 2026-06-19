@@ -250,6 +250,9 @@ struct LiteRtLmConversation {
   // ensuring memory safety for the C API caller without requiring explicit
   // per-call deallocation.
   std::string last_rendered_message;
+  // This field stores the result of the last call to
+  // `litert_lm_conversation_render_preface_to_string`.
+  std::string last_rendered_preface;
 };
 
 struct LiteRtLmJsonResponse {
@@ -1300,6 +1303,21 @@ const char* litert_lm_conversation_render_message_to_string(
   }
   conversation->last_rendered_message = std::move(*rendered);
   return conversation->last_rendered_message.c_str();
+}
+
+const char* litert_lm_conversation_render_preface_to_string(
+    LiteRtLmConversation* conversation) {
+  if (!conversation || !conversation->conversation) {
+    return nullptr;
+  }
+  auto rendered = conversation->conversation->RenderPrefaceIntoString(
+      litert::lm::OptionalArgs());
+  if (!rendered.ok()) {
+    ABSL_LOG(ERROR) << "Failed to render preface: " << rendered.status();
+    return nullptr;
+  }
+  conversation->last_rendered_preface = std::move(*rendered);
+  return conversation->last_rendered_preface.c_str();
 }
 
 void litert_lm_conversation_cancel_process(LiteRtLmConversation* conversation) {

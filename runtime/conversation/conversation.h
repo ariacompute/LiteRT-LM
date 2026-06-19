@@ -614,6 +614,10 @@ class Conversation {
   absl::StatusOr<std::string> RenderMessageIntoString(
       const Message& message, OptionalArgs optional_args);
 
+  // Renders the preface into a string for testing and logging purposes.
+  absl::StatusOr<std::string> RenderPrefaceIntoString(
+      OptionalArgs optional_args);
+
  private:
   explicit Conversation(
       Engine& engine, std::unique_ptr<Engine::Session> session,
